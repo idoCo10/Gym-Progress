@@ -25,9 +25,9 @@ import live.icenet.gymprogress.data.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+
+
 // temp!
-
-
 
 
 class MainActivity : ComponentActivity() {
