@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter
 
 
 
-// MASTER!
+// MASTER!!
 
 
 class MainActivity : ComponentActivity() {
