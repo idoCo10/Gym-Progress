@@ -32,7 +32,7 @@ import live.icenet.gymprogress.data.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// Temp!
+// Temp! 11/12/25 02:57
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
