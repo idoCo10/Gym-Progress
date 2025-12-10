@@ -12,3 +12,4 @@ data class Exercise(
     val reps: Int,
     val sets: Int
 )
+
