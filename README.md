@@ -31,4 +31,4 @@ A simple Android app to track gym workouts, built with **Jetpack Compose** and *
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/GymProgress.git
+   git clone https://github.com/idoCo10/Gym-Progress.git
