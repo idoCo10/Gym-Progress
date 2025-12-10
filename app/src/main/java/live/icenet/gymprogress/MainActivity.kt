@@ -26,8 +26,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 
-// MASTER!
 
+// MASTER!
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
