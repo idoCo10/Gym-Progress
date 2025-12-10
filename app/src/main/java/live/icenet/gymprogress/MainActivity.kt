@@ -30,7 +30,7 @@ import live.icenet.gymprogress.data.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// Temp! 11/12/25 02:58
+// Temp! 11/12/25 03:46
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,8 +44,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-
 
 
 @Composable
@@ -87,8 +85,6 @@ fun NavApp() {
 }
 
 
-
-
 @Composable
 fun MainMenuScreen(
     onAddMachine: () -> Unit,
@@ -110,8 +106,6 @@ fun MainMenuScreen(
 }
 
 
-
-
 @Composable
 fun AddMachineScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -121,56 +115,127 @@ fun AddMachineScreen(onBack: () -> Unit) {
     var machineName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var machineList by remember { mutableStateOf(listOf<Machine>()) }
+    var selectedMachine by remember { mutableStateOf<Machine?>(null) }
 
     LaunchedEffect(Unit) {
         scope.launch { machineList = db.machineDao().getAll() }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp)
     ) {
-        Text("Add Machine", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(20.dp))
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Top
+        ) {
+            item {
+                Text("Add / Edit Machine", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(20.dp))
 
-        OutlinedTextField(
-            value = machineName,
-            onValueChange = { machineName = it },
-            label = { Text("Machine Name") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-            modifier = Modifier.fillMaxWidth()
-        )
+                OutlinedTextField(
+                    value = machineName,
+                    onValueChange = { machineName = it },
+                    label = { Text("Machine Name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = {
-            if (machineName.isNotBlank()) {
-                scope.launch {
-                    db.machineDao().insert(Machine(name = machineName.trim()))
-                    machineName = ""
-                    message = "Machine saved!"
-                    machineList = db.machineDao().getAll()
+                Spacer(Modifier.height(20.dp))
+
+                Button(
+                    onClick = {
+                        if (machineName.isNotBlank()) {
+                            scope.launch {
+                                if (selectedMachine != null) {
+                                    val oldName = selectedMachine!!.name
+                                    val updatedMachine = selectedMachine!!.copy(name = machineName.trim())
+                                    db.machineDao().update(updatedMachine)
+
+                                    // Update exercises using this machine
+                                    val allSessions = db.sessionDao().getAll()
+                                    for (session in allSessions) {
+                                        val exercises = db.exerciseDao().getBySession(session.id)
+                                        exercises.filter { it.machineName == oldName }.forEach { ex ->
+                                            db.exerciseDao().update(ex.copy(machineName = updatedMachine.name))
+                                        }
+                                    }
+
+                                    message = "Machine updated!"
+                                    selectedMachine = null
+                                } else {
+                                    db.machineDao().insert(Machine(name = machineName.trim()))
+                                    message = "Machine saved!"
+                                }
+
+                                machineName = ""
+                                machineList = db.machineDao().getAll()
+                            }
+                        } else message = "Please enter a name"
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (selectedMachine != null) "Update Machine" else "Save Machine")
                 }
-            } else message = "Please enter a name"
-        }) { Text("Save Machine") }
 
-        Spacer(Modifier.height(10.dp))
-        if (message.isNotEmpty()) Text(message)
+                Spacer(Modifier.height(10.dp))
+                if (message.isNotEmpty()) Text(message)
 
-        Spacer(Modifier.height(20.dp))
-        Text("Existing Machines:", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(10.dp))
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            items(machineList) { machine -> Text("- ${machine.name}") }
+                Spacer(Modifier.height(20.dp))
+                Text("Existing Machines:", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(10.dp))
+            }
+
+            items(machineList) { machine ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                ) {
+                    Text("- ${machine.name}", modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        selectedMachine = machine
+                        machineName = machine.name
+                        message = ""
+                    }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Machine")
+                    }
+                    IconButton(onClick = {
+                        scope.launch {
+                            db.machineDao().delete(machine)
+
+                            // Delete all exercises using this machine
+                            val allSessions = db.sessionDao().getAll()
+                            for (session in allSessions) {
+                                val exercises = db.exerciseDao().getBySession(session.id)
+                                exercises.filter { it.machineName == machine.name }.forEach {
+                                    db.exerciseDao().delete(it)
+                                }
+                            }
+
+                            machineList = db.machineDao().getAll()
+                            if (selectedMachine?.id == machine.id) {
+                                selectedMachine = null
+                                machineName = ""
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Machine")
+                    }
+                }
+            }
         }
 
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onBack) { Text("Back") }
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding()
+        ) { Text("Back") }
     }
 }
-
-
 
 
 @Composable
@@ -194,16 +259,10 @@ fun StartSessionScreen(onBack: () -> Unit) {
     var sets by remember { mutableStateOf("") }
     var exerciseMessage by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        scope.launch { machineList = db.machineDao().getAll() }
-    }
-
-    // Load existing exercises if session already exists
+    LaunchedEffect(Unit) { scope.launch { machineList = db.machineDao().getAll() } }
     LaunchedEffect(sessionId) {
         if (sessionId != null) {
-            scope.launch {
-                sessionExercises = db.exerciseDao().getBySession(sessionId!!)
-            }
+            scope.launch { sessionExercises = db.exerciseDao().getBySession(sessionId!!) }
         }
     }
 
@@ -212,50 +271,56 @@ fun StartSessionScreen(onBack: () -> Unit) {
             .fillMaxSize()
             .padding(20.dp)
     ) {
-        Text(
-            if (sessionId == null) "Create Session" else "Edit Session",
-            style = MaterialTheme.typography.titleLarge
-        )
-        Spacer(Modifier.height(20.dp))
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Top
+        ) {
+            item {
+                Text(
+                    if (sessionId == null) "Create Session" else "Edit Session",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(Modifier.height(20.dp))
+            }
 
-        if (sessionId == null) {
-            // Session creation UI
-            OutlinedTextField(
-                value = sessionName,
-                onValueChange = { sessionName = it },
-                label = { Text("Session Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
-            Button(onClick = {
-                if (sessionName.isNotBlank()) {
-                    scope.launch {
-                        val dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"))
-                        val fullName = "$sessionName ($dateStr)"
-                        val id = db.sessionDao().insert(Session(name = fullName)).toInt()
-                        sessionId = id
-                        sessionMessage = "Session '$fullName' created!"
+            if (sessionId == null) {
+                item {
+                    OutlinedTextField(
+                        value = sessionName,
+                        onValueChange = { sessionName = it },
+                        label = { Text("Session Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = {
+                        if (sessionName.isNotBlank()) {
+                            scope.launch {
+                                val dateStr = LocalDate.now()
+                                    .format(DateTimeFormatter.ofPattern("dd/MM/yy"))
+                                val fullName = "$sessionName ($dateStr)"
+                                sessionId = db.sessionDao().insert(Session(name = fullName)).toInt()
+                                sessionMessage = "Session '$fullName' created!"
+                            }
+                        } else sessionMessage = "Enter a session name"
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Create Session")
                     }
-                } else sessionMessage = "Enter a session name"
-            }) { Text("Create Session") }
+                    Spacer(Modifier.height(10.dp))
+                    if (sessionMessage.isNotEmpty()) Text(sessionMessage)
+                }
+            }
 
-            Spacer(Modifier.height(10.dp))
-            if (sessionMessage.isNotEmpty()) Text(sessionMessage)
-        }
+            // Add / Edit Exercise section
+            if (sessionId != null) {
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    Text("Add / Edit Exercise", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(10.dp))
+                    Text("Select Machine:")
+                }
 
-        // Add new exercise section
-        if (sessionId != null) {
-            Spacer(Modifier.height(20.dp))
-            Text("Add / Edit Exercise", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(10.dp))
-
-            Text("Select Machine:")
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .fillMaxWidth()
-            ) {
                 items(machineList) { machine ->
                     val existingExercise = sessionExercises.find { it.machineName == machine.name }
                     Button(
@@ -282,83 +347,79 @@ fun StartSessionScreen(onBack: () -> Unit) {
                         Text(machine.name + if (existingExercise != null) " (Edit)" else "")
                     }
                 }
-            }
 
-            if (selectedMachine != null) {
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    label = { Text("Weight (kg)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = reps,
-                    onValueChange = { reps = it },
-                    label = { Text("Reps") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = sets,
-                    onValueChange = { sets = it },
-                    label = { Text("Sets") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                item {
+                    if (selectedMachine != null) {
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = weight,
+                            onValueChange = { weight = it },
+                            label = { Text("Weight (kg)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = reps,
+                            onValueChange = { reps = it },
+                            label = { Text("Reps") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = sets,
+                            onValueChange = { sets = it },
+                            label = { Text("Sets") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
-                Spacer(Modifier.height(10.dp))
-                Button(onClick = {
-                    if (weight.isNotBlank() && reps.isNotBlank() && sets.isNotBlank() && sessionId != null && selectedMachine != null) {
-                        scope.launch {
-                            val exToSave = selectedExercise?.copy(
-                                sessionId = sessionId!!,
-                                machineName = selectedMachine!!.name,
-                                weight = weight.toIntOrNull() ?: 0,
-                                reps = reps.toIntOrNull() ?: 0,
-                                sets = sets.toIntOrNull() ?: 0
-                            ) ?: Exercise(
-                                sessionId = sessionId!!,
-                                machineName = selectedMachine!!.name,
-                                weight = weight.toIntOrNull() ?: 0,
-                                reps = reps.toIntOrNull() ?: 0,
-                                sets = sets.toIntOrNull() ?: 0
-                            )
-                            if (exToSave.id == 0) db.exerciseDao().insert(exToSave)
-                            else db.exerciseDao().update(exToSave)
+                        Spacer(Modifier.height(10.dp))
+                        Button(onClick = {
+                            if (weight.isNotBlank() && reps.isNotBlank() && sets.isNotBlank()) {
+                                scope.launch {
+                                    val exToSave = selectedExercise?.copy(
+                                        sessionId = sessionId!!,
+                                        machineName = selectedMachine!!.name,
+                                        weight = weight.toIntOrNull() ?: 0,
+                                        reps = reps.toIntOrNull() ?: 0,
+                                        sets = sets.toIntOrNull() ?: 0
+                                    ) ?: Exercise(
+                                        sessionId = sessionId!!,
+                                        machineName = selectedMachine!!.name,
+                                        weight = weight.toIntOrNull() ?: 0,
+                                        reps = reps.toIntOrNull() ?: 0,
+                                        sets = sets.toIntOrNull() ?: 0
+                                    )
+                                    if (exToSave.id == 0) db.exerciseDao().insert(exToSave)
+                                    else db.exerciseDao().update(exToSave)
 
-                            sessionExercises = db.exerciseDao().getBySession(sessionId!!)
-                            selectedExercise = null
-                            selectedMachine = null
-                            weight = ""
-                            reps = ""
-                            sets = ""
-                            exerciseMessage = "Saved!"
+                                    sessionExercises = db.exerciseDao().getBySession(sessionId!!)
+                                    selectedMachine = null
+                                    selectedExercise = null
+                                    weight = ""
+                                    reps = ""
+                                    sets = ""
+                                    exerciseMessage = "Saved!"
+                                }
+                            } else exerciseMessage = "Fill all fields"
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Save Exercise")
                         }
-                    } else exerciseMessage = "Fill all fields"
-                }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Save Exercise")
+
+                        if (exerciseMessage.isNotEmpty()) {
+                            Spacer(Modifier.height(5.dp))
+                            Text(exerciseMessage)
+                        }
+                    }
                 }
 
-                if (exerciseMessage.isNotEmpty()) {
-                    Spacer(Modifier.height(5.dp))
-                    Text(exerciseMessage)
-                }
-            }
-
-            // Show existing exercises with edit/delete
-            if (sessionExercises.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                Text("Existing Exercises", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(10.dp))
-
-                sessionExercises.forEach { ex ->
+                // Show existing exercises
+                items(sessionExercises) { ex ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
@@ -374,31 +435,29 @@ fun StartSessionScreen(onBack: () -> Unit) {
                             reps = ex.reps.toString()
                             sets = ex.sets.toString()
                             exerciseMessage = ""
-                        }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Exercise")
-                        }
+                        }) { Icon(Icons.Default.Edit, contentDescription = "Edit Exercise") }
                         IconButton(onClick = {
                             scope.launch {
                                 db.exerciseDao().delete(ex)
                                 sessionExercises = db.exerciseDao().getBySession(sessionId!!)
                             }
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Exercise")
-                        }
+                        }) { Icon(Icons.Default.Delete, contentDescription = "Delete Exercise") }
                     }
                 }
             }
+        }
 
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding()
-            ) { Text("Back") }
+        // Back button pinned at bottom
+        Button(
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+        ) {
+            Text("Back")
         }
     }
 }
-
-
 
 
 @Composable
@@ -467,7 +526,6 @@ fun ViewSessionsScreen(onBack: () -> Unit, onEditSession: (Int) -> Unit) {
         Button(onClick = onBack) { Text("Back") }
     }
 }
-
 
 
 @Composable
@@ -675,9 +733,6 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
         }
     }
 }
-
-
-
 
 
 @Preview(showBackground = true)
