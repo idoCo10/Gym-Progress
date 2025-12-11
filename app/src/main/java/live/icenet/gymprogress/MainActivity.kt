@@ -449,7 +449,7 @@ fun NewSessionScreen(onBack: () -> Unit) {
                     }
 
                     // Remaining Machines to Select (exclude already selected)
-                    Text("Select Machine:", style = MaterialTheme.typography.titleMedium)
+                    Text("Add Machine:", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(5.dp))
                     Column {
                         machineList.filter { machine -> sessionExercises.none { it.machineName == machine.name } }
@@ -747,7 +747,7 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
                 }
 
                 // Remaining machines to select (exclude already selected)
-                Text("Select Machine:", style = MaterialTheme.typography.titleMedium)
+                Text("Add Machine:", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(5.dp))
                 Column {
                     machineList.filter { machine ->
