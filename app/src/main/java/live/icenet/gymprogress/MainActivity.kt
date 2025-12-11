@@ -1,6 +1,6 @@
 package live.icenet.gymprogress
 
-// M 12-12-25 01:29
+// T 12-12-25 02:29
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -114,6 +115,7 @@ fun AddMachineScreen(onBack: () -> Unit) {
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Top) {
+
             item {
                 Text("Add / Edit Machine", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(20.dp))
@@ -172,41 +174,82 @@ fun AddMachineScreen(onBack: () -> Unit) {
             }
 
             items(machineList) { machine ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    Text("- ${machine.name}", modifier = Modifier.weight(1f))
-                    IconButton(onClick = {
-                        selectedMachine = machine
-                        machineName = machine.name
-                        message = ""
-                    }) { Icon(Icons.Default.Edit, contentDescription = "Edit Machine") }
-                    IconButton(onClick = {
-                        scope.launch {
-                            db.machineDao().delete(machine)
-                            val allSessions = db.sessionDao().getAll()
-                            for (session in allSessions) {
-                                val exercises = db.exerciseDao().getBySession(session.id)
-                                exercises.filter { it.machineName == machine.name }.forEach {
-                                    db.exerciseDao().delete(it)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = machine.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // EDIT (blue)
+                        IconButton(
+                            onClick = {
+                                selectedMachine = machine
+                                machineName = machine.name
+                                message = ""
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = Color(0xFF1976D2) // 🔵 Blue
+                            )
+                        }
+
+                        // DELETE (red)
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    db.machineDao().delete(machine)
+
+                                    val allSessions = db.sessionDao().getAll()
+                                    for (session in allSessions) {
+                                        val exercises = db.exerciseDao().getBySession(session.id)
+                                        exercises.filter { it.machineName == machine.name }.forEach {
+                                            db.exerciseDao().delete(it)
+                                        }
+                                    }
+
+                                    machineList = db.machineDao().getAll()
+
+                                    if (selectedMachine?.id == machine.id) {
+                                        selectedMachine = null
+                                        machineName = ""
+                                    }
                                 }
                             }
-
-                            machineList = db.machineDao().getAll()
-                            if (selectedMachine?.id == machine.id) {
-                                selectedMachine = null
-                                machineName = ""
-                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.Red
+                            )
                         }
-                    }) { Icon(Icons.Default.Delete, contentDescription = "Delete Machine") }
+                    }
                 }
             }
         }
 
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().navigationBarsPadding()) { Text("Back") }
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
+            Text("Back")
+        }
     }
 }
+
+
+
 
 @Composable
 fun ExerciseEditorCard(
@@ -290,8 +333,22 @@ fun SelectedExercisesList(
                             Text("Weight: ${ex.weight} kg | Reps: ${ex.reps} | Sets: ${ex.sets}")
                         }
                         Row {
-                            IconButton(onClick = { onEdit(ex) }) { Icon(Icons.Default.Edit, contentDescription = "Edit Machine") }
-                            IconButton(onClick = { onDelete(ex) }) { Icon(Icons.Default.Delete, contentDescription = "Delete Machine") }
+                            IconButton(onClick = { onEdit(ex) }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit Machine",
+                                    tint = Color(0xFF1976D2)  // 🔵 Blue
+                                )
+                            }
+
+                            IconButton(onClick = { onDelete(ex) }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete Machine",
+                                    tint = Color.Red         // 🔴 Red
+                                )
+                            }
+
                         }
                     }
                 }
@@ -498,22 +555,80 @@ fun ViewSessionsScreen(onBack: () -> Unit, onEditSession: (Int) -> Unit) {
     LaunchedEffect(Unit) { loadSessions() }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Top) {
+
+        Text("Sessions history", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(20.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Top
+        ) {
             items(sessions) { session ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("${session.name}:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { onEditSession(session.id) }) { Icon(Icons.Default.Edit, contentDescription = "Edit Session") }
-                    IconButton(onClick = { scope.launch { db.sessionDao().delete(session); loadSessions() } }) { Icon(Icons.Default.Delete, contentDescription = "Delete Session") }
+
+                // ⭐ Card ⭐
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 15.dp),
+                    elevation = CardDefaults.cardElevation(6.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+
+                        // Top Row: Title + Edit + Delete
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = session.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            IconButton(onClick = { onEditSession(session.id) }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF1976D2))
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        db.sessionDao().delete(session)
+                                        loadSessions()
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+
+                        // Exercises inside card
+                        exercisesMap[session.id]?.forEach { ex ->
+                            Text(
+                                "- ${ex.machineName}: ${ex.weight} kg | ${ex.reps} reps | ${ex.sets} sets",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                            )
+                        }
+                    }
                 }
-                exercisesMap[session.id]?.forEach { ex ->
-                    Text("- ${ex.machineName}: Weight: ${ex.weight} kg | ${ex.reps} Reps | ${ex.sets} Sets", modifier = Modifier.padding(start = 10.dp))
-                }
-                Spacer(Modifier.height(15.dp))
             }
         }
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().navigationBarsPadding()) { Text("Back") }
+
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding()
+        ) {
+            Text("Back")
+        }
     }
 }
+
 
 @Composable
 fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
