@@ -1,6 +1,6 @@
 package live.icenet.gymprogress
 
-// T 12-12-25 01:28
+// T 12-12-25 01:42
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -498,6 +498,10 @@ fun ViewSessionsScreen(onBack: () -> Unit, onEditSession: (Int) -> Unit) {
     LaunchedEffect(Unit) { loadSessions() }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+
+        Text("Sessions history", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(20.dp))
+
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Top) {
             items(sessions) { session ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
