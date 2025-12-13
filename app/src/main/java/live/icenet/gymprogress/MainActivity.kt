@@ -1,6 +1,6 @@
 package live.icenet.gymprogress
 
-// T 14-12-25 00:32 | accept double
+// T 14-12-25 01:47 | better machine card looks
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -435,12 +436,13 @@ fun SelectedExercisesList(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 4.dp)
+                        .height(114.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(8.dp)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -449,30 +451,70 @@ fun SelectedExercisesList(
                             )
 
                             // ✅ FIXED DISPLAY (NO MORE 0.0)
-                            Text(
-                                "Weight: ${formatNumber(ex.weight)} kg | " +
-                                        "Reps: ${formatNumber(ex.reps)} | " +
-                                        "Sets: ${formatNumber(ex.sets)}"
-                            )
+                            Spacer(Modifier.height(3.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBox(
+                                    label = "Weight",
+                                    value = formatNumber(ex.weight),
+                                    unit = "kg",
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                StatBox(
+                                    label = "Reps",
+                                    value = formatNumber(ex.reps),
+                                    unit = "",
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                StatBox(
+                                    label = "Sets",
+                                    value = formatNumber(ex.sets),
+                                    unit = "",
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
                         }
 
                         Row {
-                            IconButton(onClick = { onEdit(ex) }) {
+                            IconButton(
+                                onClick = { onEdit(ex) },
+                                modifier = Modifier.padding(
+                                    start = 4.dp,
+                                    end = 1.dp,
+                                    top = 30.dp,
+                                    bottom = 2.dp
+                                )
+                            ) {
                                 Icon(
-                                    Icons.Default.Edit,
+                                    imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit Machine",
-                                    tint = Color(0xFF1976D2)
+                                    tint = Color(0xFF1976D2) // 🔵 EDIT color restored
                                 )
                             }
 
-                            IconButton(onClick = { onDelete(ex) }) {
+                            IconButton(
+                                onClick = { onDelete(ex) },
+                                modifier = Modifier.padding(
+                                    start = 2.dp,
+                                    end = 4.dp,
+                                    top = 30.dp,
+                                    bottom = 6.dp
+                                )
+                            ) {
                                 Icon(
-                                    Icons.Default.Delete,
+                                    imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete Machine",
-                                    tint = Color.Red
+                                    tint = Color.Red // 🔴 DELETE color restored
                                 )
                             }
                         }
+
                     }
                 }
             }
@@ -1063,6 +1105,45 @@ fun formatNumber(value: Double): String {
     else
         value.toString()
 }
+
+@Composable
+fun StatBox(
+    label: String,
+    value: String,
+    unit: String,
+    modifier: Modifier = Modifier,
+    height: Dp = 70.dp   // 👈 default height
+) {
+    Column(
+        modifier = modifier
+            .height(height)            // 👈 HERE
+            .clip(MaterialTheme.shapes.medium)
+            .background(Color(0xFFF2F2F2))
+            .padding(vertical = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center // 👈 centers content nicely
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+
+        Spacer(Modifier.height(1.dp))
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Text(
+            text = unit,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
