@@ -1,6 +1,6 @@
 package live.icenet.gymprogress
 
-// T 13-12-25 15:46
+// T 14-12-25 00:32 | accept double
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -346,11 +346,19 @@ fun ExerciseEditorCard(
 
             Spacer(Modifier.height(10.dp))
 
+            // ✅ WEIGHT (DECIMAL)
             OutlinedTextField(
                 value = weight,
-                onValueChange = onWeightChange,
+                onValueChange = {
+                    if (it.text.matches(Regex("^\\d*(\\.\\d*)?$"))) {
+                        onWeightChange(it)
+                    }
+                },
                 label = { Text("Weight (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Next
+                ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -359,22 +367,38 @@ fun ExerciseEditorCard(
 
             Spacer(Modifier.height(10.dp))
 
+            // ✅ REPS (DECIMAL)
             OutlinedTextField(
                 value = reps,
-                onValueChange = onRepsChange,
+                onValueChange = {
+                    if (it.matches(Regex("^\\d*(\\.\\d*)?$"))) {
+                        onRepsChange(it)
+                    }
+                },
                 label = { Text("Reps") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Next
+                ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(10.dp))
 
+            // ✅ SETS (DECIMAL)
             OutlinedTextField(
                 value = sets,
-                onValueChange = onSetsChange,
+                onValueChange = {
+                    if (it.matches(Regex("^\\d*(\\.\\d*)?$"))) {
+                        onSetsChange(it)
+                    }
+                },
                 label = { Text("Sets") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done
+                ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -396,6 +420,7 @@ fun ExerciseEditorCard(
     }
 }
 
+
 @Composable
 fun SelectedExercisesList(
     sessionExercises: List<Exercise>,
@@ -408,20 +433,35 @@ fun SelectedExercisesList(
         Column {
             sessionExercises.forEach { ex ->
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(ex.machineName, style = MaterialTheme.typography.titleMedium)
-                            Text("Weight: ${ex.weight} kg | Reps: ${ex.reps} | Sets: ${ex.sets}")
+                            Text(
+                                ex.machineName,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            // ✅ FIXED DISPLAY (NO MORE 0.0)
+                            Text(
+                                "Weight: ${formatNumber(ex.weight)} kg | " +
+                                        "Reps: ${formatNumber(ex.reps)} | " +
+                                        "Sets: ${formatNumber(ex.sets)}"
+                            )
                         }
+
                         Row {
                             IconButton(onClick = { onEdit(ex) }) {
                                 Icon(
                                     Icons.Default.Edit,
                                     contentDescription = "Edit Machine",
-                                    tint = Color(0xFF1976D2)  // 🔵 Blue
+                                    tint = Color(0xFF1976D2)
                                 )
                             }
 
@@ -429,10 +469,9 @@ fun SelectedExercisesList(
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = "Delete Machine",
-                                    tint = Color.Red         // 🔴 Red
+                                    tint = Color.Red
                                 )
                             }
-
                         }
                     }
                 }
@@ -441,6 +480,7 @@ fun SelectedExercisesList(
         Spacer(Modifier.height(20.dp))
     }
 }
+
 
 @Composable
 fun MachinePickerList(
@@ -620,9 +660,13 @@ fun NewSessionScreen(onBack: () -> Unit) {
                             weightFocusRequester = weightFocusRequester,
                             onSave = {
                                 scope.launch {
-                                    val weightValue = weight.text.toIntOrNull() ?: 0
-                                    val repsValue = reps.toIntOrNull() ?: 0
-                                    val setsValue = sets.toIntOrNull() ?: 0
+
+                                    val weightValue =
+                                        if (weight.text.isBlank()) 0.0 else weight.text.toDouble()
+                                    val repsValue =
+                                        if (reps.isBlank()) 0.0 else reps.toDouble()
+                                    val setsValue =
+                                        if (sets.isBlank()) 0.0 else sets.toDouble()
 
                                     val ex =
                                         selectedExercise?.copy(
@@ -642,16 +686,20 @@ fun NewSessionScreen(onBack: () -> Unit) {
                                     else
                                         db.exerciseDao().insert(ex)
 
-                                    sessionExercises =
-                                        db.exerciseDao().getBySession(sessionId!!)
+                                    sessionExercises = db.exerciseDao().getBySession(sessionId!!)
                                     selectedMachine = null
                                     selectedExercise = null
+
+                                    // 🔹 RESET FIELDS (EMPTY, NOT 0.0)
                                     weight = TextFieldValue("")
                                     reps = ""
                                     sets = ""
+
                                     exerciseMessage = "Saved!"
                                 }
                             }
+
+
                         )
 
                         Spacer(Modifier.height(20.dp))
@@ -662,15 +710,30 @@ fun NewSessionScreen(onBack: () -> Unit) {
                     SelectedExercisesList(
                         sessionExercises = sessionExercises,
                         onEdit = { ex ->
-                            val text = ex.weight.toString()
+                            val weightText =
+                                if (ex.weight % 1.0 == 0.0)
+                                    ex.weight.toInt().toString()
+                                else
+                                    ex.weight.toString()
+
                             weight = TextFieldValue(
-                                text = text,
-                                selection = TextRange(text.length)
+                                text = weightText,
+                                selection = TextRange(weightText.length)
                             )
-                            reps = ex.reps.toString()
-                            sets = ex.sets.toString()
-                            selectedMachine =
-                                machineList.find { it.name == ex.machineName }
+
+                            reps =
+                                if (ex.reps % 1.0 == 0.0)
+                                    ex.reps.toInt().toString()
+                                else
+                                    ex.reps.toString()
+
+                            sets =
+                                if (ex.sets % 1.0 == 0.0)
+                                    ex.sets.toInt().toString()
+                                else
+                                    ex.sets.toString()
+
+                            selectedMachine = machineList.find { it.name == ex.machineName }
                             selectedExercise = ex
                             exerciseMessage = ""
 
@@ -678,7 +741,8 @@ fun NewSessionScreen(onBack: () -> Unit) {
                                 listState.animateScrollToItem(0)
                                 weightFocusRequester.requestFocus()
                             }
-                        },
+                        }
+                        ,
                         onDelete = { ex ->
                             scope.launch {
                                 db.exerciseDao().delete(ex)
@@ -797,10 +861,12 @@ fun ViewSessionsScreen(onBack: () -> Unit, onEditSession: (Int) -> Unit) {
                         // Exercises inside card
                         exercisesMap[session.id]?.forEach { ex ->
                             Text(
-                                "- ${ex.machineName}: ${ex.weight} kg | ${ex.reps} reps | ${ex.sets} sets",
+                                "- ${ex.machineName}: ${formatNumber(ex.weight)} kg | " +
+                                        "${formatNumber(ex.reps)} reps | ${formatNumber(ex.sets)} sets",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                             )
+
                         }
                     }
                 }
@@ -869,9 +935,13 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
                         weightFocusRequester = weightFocusRequester,
                         onSave = {
                             scope.launch {
-                                val weightValue = weight.text.toIntOrNull() ?: 0
-                                val repsValue = reps.toIntOrNull() ?: 0
-                                val setsValue = sets.toIntOrNull() ?: 0
+
+                                val weightValue =
+                                    if (weight.text.isBlank()) 0.0 else weight.text.toDouble()
+                                val repsValue =
+                                    if (reps.isBlank()) 0.0 else reps.toDouble()
+                                val setsValue =
+                                    if (sets.isBlank()) 0.0 else sets.toDouble()
 
                                 val ex =
                                     selectedExercise?.copy(
@@ -891,16 +961,20 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
                                 else
                                     db.exerciseDao().insert(ex)
 
-                                sessionExercises =
-                                    db.exerciseDao().getBySession(sessionId)
+                                sessionExercises = db.exerciseDao().getBySession(sessionId)
                                 selectedMachine = null
                                 selectedExercise = null
+
+                                // 🔹 RESET FIELDS (EMPTY)
                                 weight = TextFieldValue("")
                                 reps = ""
                                 sets = ""
+
                                 exerciseMessage = "Saved!"
                             }
                         }
+
+
                     )
 
                     Spacer(Modifier.height(20.dp))
@@ -911,15 +985,30 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
                 SelectedExercisesList(
                     sessionExercises = sessionExercises,
                     onEdit = { ex ->
-                        val text = ex.weight.toString()
+                        val weightText =
+                            if (ex.weight % 1.0 == 0.0)
+                                ex.weight.toInt().toString()
+                            else
+                                ex.weight.toString()
+
                         weight = TextFieldValue(
-                            text = text,
-                            selection = TextRange(text.length)
+                            text = weightText,
+                            selection = TextRange(weightText.length)
                         )
-                        reps = ex.reps.toString()
-                        sets = ex.sets.toString()
-                        selectedMachine =
-                            machineList.find { it.name == ex.machineName }
+
+                        reps =
+                            if (ex.reps % 1.0 == 0.0)
+                                ex.reps.toInt().toString()
+                            else
+                                ex.reps.toString()
+
+                        sets =
+                            if (ex.sets % 1.0 == 0.0)
+                                ex.sets.toInt().toString()
+                            else
+                                ex.sets.toString()
+
+                        selectedMachine = machineList.find { it.name == ex.machineName }
                         selectedExercise = ex
                         exerciseMessage = ""
 
@@ -966,6 +1055,13 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
             Text("Back")
         }
     }
+}
+
+fun formatNumber(value: Double): String {
+    return if (value % 1.0 == 0.0)
+        value.toInt().toString()
+    else
+        value.toString()
 }
 
 @Preview(showBackground = true)
