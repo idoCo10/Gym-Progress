@@ -1,6 +1,6 @@
 package live.icenet.gymprogress
 
-// T 13-12-25 15:23
+// T 13-12-25 15:46
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -619,39 +619,38 @@ fun NewSessionScreen(onBack: () -> Unit) {
                             message = exerciseMessage,
                             weightFocusRequester = weightFocusRequester,
                             onSave = {
-                                if (weight.text.isNotBlank() &&
-                                    reps.isNotBlank() &&
-                                    sets.isNotBlank()
-                                ) {
-                                    scope.launch {
-                                        val ex =
-                                            selectedExercise?.copy(
-                                                weight = weight.text.toInt(),
-                                                reps = reps.toInt(),
-                                                sets = sets.toInt()
-                                            ) ?: Exercise(
-                                                sessionId = sessionId!!,
-                                                machineName = machine.name,
-                                                weight = weight.text.toInt(),
-                                                reps = reps.toInt(),
-                                                sets = sets.toInt()
-                                            )
+                                scope.launch {
+                                    val weightValue = weight.text.toIntOrNull() ?: 0
+                                    val repsValue = reps.toIntOrNull() ?: 0
+                                    val setsValue = sets.toIntOrNull() ?: 0
 
-                                        if (selectedExercise != null)
-                                            db.exerciseDao().update(ex)
-                                        else
-                                            db.exerciseDao().insert(ex)
+                                    val ex =
+                                        selectedExercise?.copy(
+                                            weight = weightValue,
+                                            reps = repsValue,
+                                            sets = setsValue
+                                        ) ?: Exercise(
+                                            sessionId = sessionId!!,
+                                            machineName = machine.name,
+                                            weight = weightValue,
+                                            reps = repsValue,
+                                            sets = setsValue
+                                        )
 
-                                        sessionExercises =
-                                            db.exerciseDao().getBySession(sessionId!!)
-                                        selectedMachine = null
-                                        selectedExercise = null
-                                        weight = TextFieldValue("")
-                                        reps = ""
-                                        sets = ""
-                                        exerciseMessage = "Saved!"
-                                    }
-                                } else exerciseMessage = "Fill all fields"
+                                    if (selectedExercise != null)
+                                        db.exerciseDao().update(ex)
+                                    else
+                                        db.exerciseDao().insert(ex)
+
+                                    sessionExercises =
+                                        db.exerciseDao().getBySession(sessionId!!)
+                                    selectedMachine = null
+                                    selectedExercise = null
+                                    weight = TextFieldValue("")
+                                    reps = ""
+                                    sets = ""
+                                    exerciseMessage = "Saved!"
+                                }
                             }
                         )
 
@@ -869,39 +868,38 @@ fun EditSessionScreen(sessionId: Int, onBack: () -> Unit) {
                         message = exerciseMessage,
                         weightFocusRequester = weightFocusRequester,
                         onSave = {
-                            if (weight.text.isNotBlank() &&
-                                reps.isNotBlank() &&
-                                sets.isNotBlank()
-                            ) {
-                                scope.launch {
-                                    val ex =
-                                        selectedExercise?.copy(
-                                            weight = weight.text.toInt(),
-                                            reps = reps.toInt(),
-                                            sets = sets.toInt()
-                                        ) ?: Exercise(
-                                            sessionId = sessionId,
-                                            machineName = machine.name,
-                                            weight = weight.text.toInt(),
-                                            reps = reps.toInt(),
-                                            sets = sets.toInt()
-                                        )
+                            scope.launch {
+                                val weightValue = weight.text.toIntOrNull() ?: 0
+                                val repsValue = reps.toIntOrNull() ?: 0
+                                val setsValue = sets.toIntOrNull() ?: 0
 
-                                    if (selectedExercise != null)
-                                        db.exerciseDao().update(ex)
-                                    else
-                                        db.exerciseDao().insert(ex)
+                                val ex =
+                                    selectedExercise?.copy(
+                                        weight = weightValue,
+                                        reps = repsValue,
+                                        sets = setsValue
+                                    ) ?: Exercise(
+                                        sessionId = sessionId,
+                                        machineName = machine.name,
+                                        weight = weightValue,
+                                        reps = repsValue,
+                                        sets = setsValue
+                                    )
 
-                                    sessionExercises =
-                                        db.exerciseDao().getBySession(sessionId)
-                                    selectedMachine = null
-                                    selectedExercise = null
-                                    weight = TextFieldValue("")
-                                    reps = ""
-                                    sets = ""
-                                    exerciseMessage = "Saved!"
-                                }
-                            } else exerciseMessage = "Fill all fields"
+                                if (selectedExercise != null)
+                                    db.exerciseDao().update(ex)
+                                else
+                                    db.exerciseDao().insert(ex)
+
+                                sessionExercises =
+                                    db.exerciseDao().getBySession(sessionId)
+                                selectedMachine = null
+                                selectedExercise = null
+                                weight = TextFieldValue("")
+                                reps = ""
+                                sets = ""
+                                exerciseMessage = "Saved!"
+                            }
                         }
                     )
 
